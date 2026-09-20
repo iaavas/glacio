@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Meltprint — how much ice do you melt?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+
+    --glacier-950: #071c2c;
+    --glacier-900: #0a2a40;
+    --glacier-800: #0b3d5c;
+    --glacier-500: #2e7fb0;
+    --meltwater: #6fc3e4;
+    --ice-100: #eaf6fb;
+    --ice-50: #f6fbfd;
+    --warn-400: #ff8a5c;
+    --warn-600: #e05a2f;
+    --ink: #0b2033;
+    --ink-soft: #3a5568;
+    --card: #ffffff;
+    --card-border: #d3e8f1;
+    --shadow: 0 1px 2px rgba(11,32,51,.06);
+
+    --bg: var(--ice-50);
+    --surface: var(--card);
+    --border: var(--card-border);
+    --text: var(--ink);
+    --text-soft: var(--ink-soft);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: var(--glacier-950);
+      --surface: #0f2f47;
+      --border: #17435f;
+      --text: var(--ice-100);
+      --text-soft: #9cc4d8;
+      --shadow: 0 1px 2px rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: var(--glacier-950);
+    --surface: #0f2f47;
+    --border: #17435f;
+    --text: var(--ice-100);
+    --text-soft: #9cc4d8;
+    --shadow: 0 1px 2px rgba(0,0,0,.3);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    transition: background .4s ease, color .4s ease;
+  }
+  h1, h2, h3, .display {
+    font-family: "Space Grotesk", "Inter", sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  button { font-family: inherit; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+  img, svg { max-width: 100%; display: block; }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    position: sticky; top: 0; top: env(safe-area-inset-top, 0px);
+    z-index: 20;
+    padding: 14px 24px;
+    padding-top: calc(14px + env(safe-area-inset-top, 0px));
+    display: flex; align-items: center; justify-content: space-between;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid transparent;
+  }
+  .topbar.show-border { border-bottom-color: var(--border); }
+  .brand { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 600; }
+  .brand .dot { width: 9px; height: 9px; border-radius: 999px; background: var(--meltwater); }
+  .gauge { display: flex; align-items: center; gap: 10px; }
+  .gauge-num { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--text-soft); min-width: 92px; text-align: right; }
+
+  /* ---------- scenes ---------- */
+  .scene { display: none; min-height: calc(100vh - 64px); min-height: calc(100dvh - 64px); }
+  .scene.active { display: block; }
+
+  /* ---- hero ---- */
+  #hero .wrap { padding-top: 6vh; padding-bottom: 64px; text-align: center; }
+  .hero-art { width: min(420px, 82vw); margin: 0 auto 8px; }
+  .hero-art .bob { transform-origin: center; }
+  .eyebrow-line { color: var(--text-soft); font-size: 15px; margin: 18px 0 6px; }
+  h1.title { font-size: clamp(30px, 5.4vw, 46px); line-height: 1.08; }
+  .lede { color: var(--text-soft); font-size: 17px; line-height: 1.55; max-width: 480px; margin: 18px auto 0; }
+  .cta {
+    margin-top: 32px; border: none; cursor: pointer;
+    background: var(--glacier-800); color: var(--ice-100);
+    padding: 14px 28px; border-radius: 10px;
+    font-size: 16px; font-weight: 600;
+    transition: transform .15s ease, background .15s ease;
+  }
+  .cta:hover { background: var(--glacier-500); transform: translateY(-1px); }
+  .cta:active { transform: translateY(0); }
+  .fine { color: var(--text-soft); font-size: 13px; margin-top: 22px; line-height: 1.5; }
+
+  /* ---- quiz ---- */
+  #quiz .wrap { padding-top: 28px; padding-bottom: 60px; }
+  .progress-track { height: 4px; background: var(--border); border-radius: 999px; overflow: hidden; margin-bottom: 22px; }
+  .progress-fill { height: 100%; background: var(--meltwater); width: 0%; transition: width .5s ease; }
+  .q-index { color: var(--text-soft); font-size: 14px; margin-bottom: 10px; }
+  h2.q-prompt { font-size: clamp(21px, 3.4vw, 27px); line-height: 1.3; margin-bottom: 22px; min-height: 68px; }
+  .options { display: grid; gap: 10px; }
+  .opt {
+    display: flex; align-items: center; gap: 14px;
+    text-align: left; width: 100%;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px; cursor: pointer;
+    font-size: 15.5px; color: var(--text);
+    transition: border-color .15s ease, transform .12s ease, background .15s ease;
+  }
+  .opt:hover { border-color: var(--meltwater); }
+  .opt:active { transform: scale(.99); }
+  .opt.chosen { border-color: var(--meltwater); background: color-mix(in srgb, var(--meltwater) 12%, var(--surface)); }
+  .opt-icon { width: 30px; height: 30px; flex: none; color: var(--glacier-500); }
+  .opt.chosen .opt-icon { color: var(--meltwater); }
+  .back-row { margin-top: 18px; }
+  .link-btn {
+    background: none; border: none; color: var(--text-soft);
+    font-size: 14px; cursor: pointer; padding: 6px 0;
+  }
+  .link-btn:hover { color: var(--text); }
+
+  /* ---- results ---- */
+  #results .wrap { padding-top: 30px; padding-bottom: 70px; }
+  .tier-tag {
+    display: inline-block; font-size: 13px; font-weight: 600;
+    padding: 5px 12px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-soft);
+    margin-bottom: 14px;
+  }
+  h2.tier-title { font-size: clamp(26px, 4.6vw, 36px); margin-bottom: 18px; }
+  .result-art { width: min(360px, 78vw); margin: 4px auto 20px; }
+  .headline-stat { text-align: center; margin: 6px 0 8px; }
+  .headline-num { font-size: clamp(44px, 10vw, 64px); font-weight: 700; font-family: "Space Grotesk", sans-serif; line-height: 1; }
+  .headline-label { color: var(--text-soft); font-size: 14.5px; margin-top: 6px; }
+
+  .compare-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 30px 0 6px; }
+  @media (max-width: 520px) { .compare-grid { grid-template-columns: 1fr; } }
+  .compare-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 14px; text-align: center;
+  }
+  .compare-icon { width: 32px; height: 32px; margin: 0 auto 10px; color: var(--glacier-500); }
+  .compare-num { font-size: 21px; font-weight: 700; font-family: "Space Grotesk", sans-serif; }
+  .compare-label { font-size: 12.5px; color: var(--text-soft); margin-top: 4px; line-height: 1.4; }
+
+  .prev-note { text-align: center; font-size: 13.5px; color: var(--text-soft); margin-top: 22px; }
+
+  .action-row { display: flex; gap: 10px; justify-content: center; margin-top: 32px; flex-wrap: wrap; }
+  .btn-secondary {
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    padding: 12px 20px; border-radius: 10px; font-size: 14.5px; font-weight: 500; cursor: pointer;
+  }
+  .btn-secondary:hover { border-color: var(--meltwater); }
+
+  .method {
+    margin-top: 46px; padding-top: 22px; border-top: 1px solid var(--border);
+    font-size: 13px; color: var(--text-soft); line-height: 1.6;
+  }
+  .method b { color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="topbar" id="topbar">
+  <div class="brand"><span class="dot"></span> Meltprint</div>
+  <div class="gauge" id="gaugeWrap" style="visibility:hidden">
+    <svg id="gaugeSvg" width="34" height="26" viewBox="0 0 34 26" aria-hidden="true">
+      <defs>
+        <clipPath id="gaugeClip"><rect id="gaugeClipRect" x="0" y="26" width="34" height="0"/></clipPath>
+      </defs>
+      <polygon points="17,2 30,22 4,22" fill="var(--ice-100)" stroke="var(--glacier-500)" stroke-width="1.4"/>
+      <polygon points="17,2 30,22 4,22" fill="var(--meltwater)" clip-path="url(#gaugeClip)"/>
+    </svg>
+    <span class="gauge-num" id="gaugeNum">0 kg CO₂</span>
+  </div>
+</div>
+
+<!-- ===================== HERO ===================== -->
+<section class="scene active" id="hero">
+  <div class="wrap">
+    <div class="hero-art" id="heroArt"></div>
+    <div class="eyebrow-line">A two-minute, back-of-envelope estimate</div>
+    <h1 class="title">How much ice do you melt<br>in a year?</h1>
+    <p class="lede">Answer a few questions about how you get around, eat, and live. We'll turn your rough carbon footprint into actual Arctic ice, melted.</p>
+    <button class="cta" id="startBtn">Start</button>
+    <p class="fine">Built on a published estimate linking CO₂ emissions to Arctic sea-ice loss — not a substitute for a full carbon audit.</p>
+  </div>
+</section>
+
+<!-- ===================== QUIZ ===================== -->
+<section class="scene" id="quiz">
+  <div class="wrap">
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="q-index" id="qIndex">Question 1 of 8</div>
+    <h2 class="q-prompt" id="qPrompt"></h2>
+    <div class="options" id="qOptions"></div>
+    <div class="back-row"><button class="link-btn" id="backBtn">← Back</button></div>
+  </div>
+</section>
+
+<!-- ===================== RESULTS ===================== -->
+<section class="scene" id="results">
+  <div class="wrap">
+    <div style="text-align:center">
+      <span class="tier-tag" id="tierTag">Your result</span>
+      <h2 class="tier-title" id="tierTitle"></h2>
+    </div>
+    <div class="result-art" id="resultArt"></div>
+    <div class="headline-stat">
+      <div class="headline-num" id="headlineNum">0</div>
+      <div class="headline-label">kilograms of CO₂ a year, roughly</div>
+    </div>
+
+    <div class="compare-grid">
+      <div class="compare-card">
+        <svg class="compare-icon" viewBox="0 0 32 32"><rect x="7" y="7" width="18" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><rect x="11" y="11" width="10" height="10" rx="1.5" fill="currentColor" opacity=".35"/></svg>
+        <div class="compare-num" id="statCubes">0</div>
+        <div class="compare-label">ice cubes' worth of Arctic ice, melted</div>
+      </div>
+      <div class="compare-card">
+        <svg class="compare-icon" viewBox="0 0 32 32"><path d="M4 18h24v3a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5v-3Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6 18v-3a3 3 0 0 1 3-3" fill="none" stroke="currentColor" stroke-width="2"/><line x1="2" y1="18" x2="30" y2="18" stroke="currentColor" stroke-width="2"/></svg>
+        <div class="compare-num" id="statBathtubs">0</div>
+        <div class="compare-label">bathtubs of meltwater</div>
+      </div>
+      <div class="compare-card">
+        <svg class="compare-icon" viewBox="0 0 32 32"><rect x="3" y="10" width="26" height="14" rx="1" fill="none" stroke="currentColor" stroke-width="2"/><line x1="16" y1="10" x2="16" y2="24" stroke="currentColor" stroke-width="1.4" opacity=".5"/></svg>
+        <div class="compare-num" id="statArea">0</div>
+        <div class="compare-label">m² of Arctic sea ice, gone</div>
+      </div>
+    </div>
+
+    <p class="prev-note" id="prevNote" style="display:none"></p>
+
+    <div class="action-row">
+      <button class="btn-secondary" id="copyBtn">Copy my result</button>
+      <button class="btn-secondary" id="restartBtn">Take it again</button>
+    </div>
+
+    <div class="method">
+      <b>How this works.</b> Each answer maps to a rough annual CO₂ figure drawn from typical published estimates for transport, diet, home energy and consumption. We convert your total into ice using the estimate from Notz &amp; Stroeve's 2016 study in <i>Science</i>: roughly 3 m² of September Arctic sea ice is lost per tonne of CO₂ emitted. Volume and mass assume an average sea-ice thickness of 1.5 m and a density of 900 kg/m³. Treat the final numbers as an illustration of scale, not a precise personal footprint.
+    </div>
+  </div>
+</section>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------------- data ----------------
+  var QUESTIONS = [
+    { id:'transport', prompt:'How do you usually get around day to day?', icon:'bike',
+      options:[
+        {label:'Walking, cycling, or public transit', kg:300, icon:'bike'},
+        {label:'Small or electric car', kg:1200, icon:'car'},
+        {label:'Average petrol car, mostly solo', kg:4600, icon:'car'},
+        {label:'Large SUV or truck', kg:7000, icon:'truck'}
+      ]},
+    { id:'flights', prompt:'How much do you fly in a typical year?', icon:'plane',
+      options:[
+        {label:'I don\'t fly', kg:0, icon:'plane'},
+        {label:'One short round trip', kg:250, icon:'plane'},
+        {label:'One long-haul round trip', kg:1600, icon:'plane'},
+        {label:'Three or more flights', kg:3500, icon:'plane'}
+      ]},
+    { id:'diet', prompt:'Which best describes your diet?', icon:'plate',
+      options:[
+        {label:'Vegan', kg:700, icon:'leaf'},
+        {label:'Vegetarian', kg:1000, icon:'leaf'},
+        {label:'Meat a few times a week', kg:1900, icon:'plate'},
+        {label:'Meat with most meals', kg:2900, icon:'plate'}
+      ]},
+    { id:'energy', prompt:'Where does your home\'s electricity mostly come from?', icon:'plug',
+      options:[
+        {label:'Solar or a renewable plan', kg:300, icon:'sun'},
+        {label:'An average, mixed grid', kg:2100, icon:'plug'},
+        {label:'A mostly coal or gas grid', kg:3800, icon:'plug'}
+      ]},
+    { id:'home', prompt:'How would you describe your home?', icon:'house',
+      options:[
+        {label:'Small and efficient', kg:600, icon:'house'},
+        {label:'An average-size home', kg:1800, icon:'house'},
+        {label:'Large, with heavy heating or AC use', kg:3200, icon:'house'}
+      ]},
+    { id:'shopping', prompt:'How often do you buy new clothes, gadgets, or gear?', icon:'bag',
+      options:[
+        {label:'Rarely — I buy little or secondhand', kg:200, icon:'bag'},
+        {label:'Now and then', kg:700, icon:'bag'},
+        {label:'Often — I like new things', kg:1600, icon:'bag'}
+      ]},
+    { id:'waste', prompt:'How much food do you end up throwing away?', icon:'trash',
+      options:[
+        {label:'Rarely any', kg:100, icon:'trash'},
+        {label:'Some, most weeks', kg:300, icon:'trash'},
+        {label:'Quite a bit', kg:600, icon:'trash'}
+      ]},
+    { id:'habits', prompt:'How mindful are you about power use at home?', icon:'plug',
+      options:[
+        {label:'Efficient appliances, lights off, unplugged', kg:150, icon:'plug'},
+        {label:'Average — a mix of habits', kg:400, icon:'plug'},
+        {label:'Things stay on more than they should', kg:900, icon:'plug'}
+      ]}
+  ];
+
+  var MIN_TOTAL = QUESTIONS.reduce(function(s,q){ return s + Math.min.apply(null, q.options.map(function(o){return o.kg;})); },0);
+  var MAX_TOTAL = QUESTIONS.reduce(function(s,q){ return s + Math.max.apply(null, q.options.map(function(o){return o.kg;})); },0);
+
+  var TIERS = [
+    { max:3000,  name:'Frost Keeper',    tag:'Low melt' },
+    { max:8000,  name:'Meltwater Maker', tag:'Moderate melt' },
+    { max:15000, name:'Heatwave Habit',  tag:'High melt' },
+    { max:Infinity, name:'Glacier Buster', tag:'Very high melt' }
+  ];
+
+  // ---------------- icons ----------------
+  function icon(name){
+    var s = 'stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"';
+    switch(name){
+      case 'bike': return '<svg viewBox="0 0 32 32" '+s+'><circle cx="8" cy="23" r="5"/><circle cx="24" cy="23" r="5"/><path d="M8 23l6-13h5l5 13"/><path d="M14 10h4"/><path d="M14 23h10l-4-7"/></svg>';
+      case 'car': return '<svg viewBox="0 0 32 32" '+s+'><path d="M5 21v-4l3-6h16l3 6v4"/><rect x="4" y="21" width="24" height="4" rx="1"/><circle cx="10" cy="25" r="2"/><circle cx="22" cy="25" r="2"/></svg>';
+      case 'truck': return '<svg viewBox="0 0 32 32" '+s+'><rect x="3" y="12" width="16" height="10" rx="1"/><path d="M19 15h6l4 4v3h-10z"/><circle cx="9" cy="25" r="2"/><circle cx="23" cy="25" r="2"/></svg>';
+      case 'plane': return '<svg viewBox="0 0 32 32" '+s+'><path d="M3 18l9-2 6-11 2 1-3 10 8 1 3-4 2 1-2 6-9 1-6 8-2-1 2-7z"/></svg>';
+      case 'plate': return '<svg viewBox="0 0 32 32" '+s+'><circle cx="16" cy="16" r="11"/><circle cx="16" cy="16" r="5"/></svg>';
+      case 'leaf': return '<svg viewBox="0 0 32 32" '+s+'><path d="M7 24c0-11 9-16 18-16 0 11-7 18-18 16z"/><path d="M9 23c4-6 8-9 15-13"/></svg>';
+      case 'plug': return '<svg viewBox="0 0 32 32" '+s+'><path d="M12 4v7M20 4v7M9 11h14v4a7 7 0 0 1-14 0v-4z"/><path d="M16 22v6"/></svg>';
+      case 'sun': return '<svg viewBox="0 0 32 32" '+s+'><circle cx="16" cy="16" r="6"/><path d="M16 3v4M16 25v4M3 16h4M25 16h4M7 7l3 3M22 22l3 3M25 7l-3 3M10 22l-3 3"/></svg>';
+      case 'house': return '<svg viewBox="0 0 32 32" '+s+'><path d="M5 16l11-9 11 9"/><path d="M8 14v13h16V14"/><path d="M13 27v-8h6v8"/></svg>';
+      case 'bag': return '<svg viewBox="0 0 32 32" '+s+'><path d="M8 11h16l1 16H7z"/><path d="M12 11v-2a4 4 0 0 1 8 0v2"/></svg>';
+      case 'trash': return '<svg viewBox="0 0 32 32" '+s+'><path d="M6 9h20"/><path d="M12 9V6h8v3"/><path d="M8 9l1.5 18h13L24 9"/><path d="M13 14v9M19 14v9"/></svg>';
+      default: return '';
+    }
+  }
+
+  // ---------------- water/glacier scene builder ----------------
+  // fraction: 0 = pristine glacier, 1 = almost fully melted
+  function scene(fraction, opts){
+    opts = opts || {};
+    fraction = Math.max(0, Math.min(1, fraction));
+    var w = 320, h = 240;
+    var waterY = 150 + fraction*60;                 // water rises as more melts
+    var iceTop = 40 + fraction*70;                   // berg shrinks from the top down
+    var bergW = 150 - fraction*70;
+    var cx = w/2;
+    var chunks = Math.max(0, 3 - Math.floor(fraction*3));
+    var accent = fraction > 0.66 ? '#ff8a5c' : (fraction > 0.33 ? '#ffb37a' : 'transparent');
+
+    var bergPoints = [
+      [cx-bergW*0.55, waterY+6],
+      [cx-bergW*0.7, waterY-20],
+      [cx-bergW*0.3, iceTop+10],
+      [cx-bergW*0.05, iceTop],
+      [cx+bergW*0.35, iceTop+22],
+      [cx+bergW*0.7, waterY-14],
+      [cx+bergW*0.5, waterY+6]
+    ].map(function(p){ return p[0].toFixed(1)+','+p[1].toFixed(1); }).join(' ');
+
+    var floaters = '';
+    for (var i=0;i<chunks;i++){
+      var fx = cx - 90 + i*80 + (i%2? 20:-10);
+      var fy = waterY + 14 + (i%2?6:0);
+      floaters += '<ellipse cx="'+fx+'" cy="'+fy+'" rx="'+(16-i*3)+'" ry="'+(6-i)+'" fill="#eaf6fb" stroke="#bcdcea" stroke-width="1.5" opacity="0.95"/>';
+    }
+
+    var drips = '';
+    if (fraction > 0.15){
+      for (var d=0; d<3; d++){
+        var dx = cx - 30 + d*30;
+        drips += '<circle class="drip" cx="'+dx+'" cy="'+(iceTop+30)+'" r="2.4" fill="#6fc3e4"><animate attributeName="cy" from="'+(iceTop+20)+'" to="'+(waterY+10)+'" dur="'+(1.6+d*0.4)+'s" repeatCount="indefinite"/><animate attributeName="opacity" values="0;1;0" dur="'+(1.6+d*0.4)+'s" repeatCount="indefinite"/></circle>';
+      }
+    }
+
+    return '<svg viewBox="0 0 '+w+' '+h+'" xmlns="http://www.w3.org/2000/svg">' +
+      '<defs>' +
+        '<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+(opts.dark?'#0a2a40':'#dff1f8')+'"/><stop offset="1" stop-color="'+(opts.dark?'#071c2c':'#f6fbfd')+'"/></linearGradient>' +
+        '<linearGradient id="sea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4fa8d8"/><stop offset="1" stop-color="#0b3d5c"/></linearGradient>' +
+      '</defs>' +
+      '<rect width="'+w+'" height="'+h+'" fill="url(#sky)"/>' +
+      (accent!=='transparent' ? '<circle cx="'+(w-46)+'" cy="40" r="20" fill="'+accent+'" opacity="0.55"/>' : '') +
+      '<rect x="0" y="'+waterY+'" width="'+w+'" height="'+(h-waterY)+'" fill="url(#sea)"/>' +
+      '<polygon points="'+bergPoints+'" fill="#eaf6fb" stroke="#bcdcea" stroke-width="2"/>' +
+      '<polygon points="'+bergPoints+'" fill="#ffffff" opacity="0.25"/>' +
+      floaters + drips +
+      '</svg>';
+  }
+
+  // ---------------- state ----------------
+  var idx = 0;
+  var answers = new Array(QUESTIONS.length).fill(null);
+
+  var $ = function(id){ return document.getElementById(id); };
+  var heroArt = $('heroArt'), qIndex=$('qIndex'), qPrompt=$('qPrompt'), qOptions=$('qOptions'),
+      progressFill=$('progressFill'), backBtn=$('backBtn'), gaugeWrap=$('gaugeWrap'),
+      gaugeClipRect=$('gaugeClipRect'), gaugeNum=$('gaugeNum'), topbar=$('topbar');
+
+  var hasGsap = typeof gsap !== 'undefined';
+  var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  heroArt.innerHTML = '<div class="bob">' + scene(0.05) + '</div>';
+  if (hasGsap && !reduceMotion){
+    gsap.to(heroArt.querySelector('.bob'), { y: 8, duration: 2.6, ease: 'sine.inOut', yoyo: true, repeat: -1 });
+  }
+
+  function showScene(id){
+    var incoming = $(id);
+    document.querySelectorAll('.scene').forEach(function(s){ if (s!==incoming) s.classList.remove('active'); });
+    incoming.classList.add('active');
+    window.scrollTo({top:0, behavior:'instant' in window ? 'instant':'auto'});
+    if (hasGsap && !reduceMotion){
+      gsap.fromTo(incoming.querySelector('.wrap'),
+        { opacity:0, y:16 },
+        { opacity:1, y:0, duration:0.55, ease:'power2.out' });
+    }
+  }
+
+  function runningMax(uptoIdx){
+    var m = 0;
+    for (var i=0;i<=uptoIdx;i++){ m += Math.max.apply(null, QUESTIONS[i].options.map(function(o){return o.kg;})); }
+    return m;
+  }
+  function runningTotal(){
+    var t = 0;
+    answers.forEach(function(a){ if(a!==null) t += a; });
+    return t;
+  }
+
+  var gaugeCounter = { v: 0 };
+  function updateGauge(){
+    var answeredCount = answers.filter(function(a){return a!==null;}).length;
+    var pct = 0;
+    if (answeredCount>0){
+      var maxSoFar = runningMax(answeredCount-1);
+      pct = maxSoFar>0 ? Math.min(1, runningTotal()/maxSoFar) : 0;
+    }
+    var total = runningTotal();
+    if (hasGsap){
+      gsap.to(gaugeClipRect, { attr: { y: 26 - pct*26, height: pct*26 }, duration: 0.6, ease: 'power2.out' });
+      gsap.to(gaugeCounter, {
+        v: total, duration: 0.6, ease: 'power2.out',
+        onUpdate: function(){ gaugeNum.textContent = Math.round(gaugeCounter.v).toLocaleString() + ' kg CO\u2082'; }
+      });
+      if (answeredCount>0){
+        gsap.fromTo('#gaugeSvg', { scale: 1.25 }, { scale: 1, duration: 0.4, ease: 'back.out(3)', transformOrigin: '50% 50%' });
+      }
+    } else {
+      gaugeClipRect.setAttribute('y', (26 - pct*26).toFixed(1));
+      gaugeClipRect.setAttribute('height', (pct*26).toFixed(1));
+      gaugeNum.textContent = Math.round(total).toLocaleString() + ' kg CO\u2082';
+    }
+  }
+
+  function renderQuestion(){
+    var q = QUESTIONS[idx];
+    qIndex.textContent = 'Question ' + (idx+1) + ' of ' + QUESTIONS.length;
+    qPrompt.textContent = q.prompt;
+    backBtn.style.visibility = idx===0 ? 'hidden' : 'visible';
+
+    var targetPct = Math.round((idx/QUESTIONS.length)*100);
+    if (hasGsap) gsap.to(progressFill, { width: targetPct + '%', duration: 0.5, ease: 'power2.out' });
+    else progressFill.style.width = targetPct + '%';
+
+    if (hasGsap && !reduceMotion){
+      gsap.fromTo(qPrompt, { opacity:0, y:10 }, { opacity:1, y:0, duration:0.4, ease:'power2.out' });
+    }
+
+    qOptions.innerHTML = '';
+    var buttons = [];
+    q.options.forEach(function(opt, oi){
+      var b = document.createElement('button');
+      b.className = 'opt';
+      if (answers[idx] === opt.kg) b.classList.add('chosen');
+      b.innerHTML = '<span class="opt-icon">'+icon(opt.icon)+'</span><span>'+opt.label+'</span>';
+      b.addEventListener('click', function(){
+        answers[idx] = opt.kg;
+        buttons.forEach(function(bt){ bt.classList.remove('chosen'); });
+        b.classList.add('chosen');
+        if (hasGsap && !reduceMotion){
+          gsap.fromTo(b, { scale: 0.97 }, { scale: 1, duration: 0.25, ease: 'back.out(4)' });
+        }
+        updateGauge();
+        setTimeout(function(){
+          if (idx < QUESTIONS.length-1){ idx++; renderQuestion(); }
+          else { finish(); }
+        }, hasGsap ? 320 : 180);
+      });
+      qOptions.appendChild(b);
+      buttons.push(b);
+    });
+
+    if (hasGsap && !reduceMotion){
+      gsap.fromTo(buttons, { opacity:0, y:14 }, { opacity:1, y:0, duration:0.4, stagger:0.06, ease:'power2.out' });
+    }
+  }
+
+  backBtn.addEventListener('click', function(){
+    if (idx>0){ idx--; renderQuestion(); }
+  });
+
+  $('startBtn').addEventListener('click', function(){
+    idx = 0;
+    showScene('quiz');
+    gaugeWrap.style.visibility = 'visible';
+    topbar.classList.add('show-border');
+    updateGauge();
+    renderQuestion();
+  });
+
+  function tierFor(total){
+    for (var i=0;i<TIERS.length;i++){ if (total <= TIERS[i].max) return TIERS[i]; }
+    return TIERS[TIERS.length-1];
+  }
+
+  function animateNumber(el, to, suffix, duration){
+    suffix = suffix || '';
+    if (hasGsap){
+      var counter = { v: 0 };
+      gsap.to(counter, {
+        v: to, duration: (duration||900)/1000, ease: 'power3.out',
+        onUpdate: function(){ el.textContent = Math.round(counter.v).toLocaleString() + suffix; }
+      });
+      return;
+    }
+    var start = performance.now();
+    function frame(now){
+      var p = Math.min(1, (now-start)/duration);
+      var eased = 1 - Math.pow(1-p, 3);
+      el.textContent = Math.round(to*eased).toLocaleString() + suffix;
+      if (p<1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function finish(){
+    var total = runningTotal();
+    var tier = tierFor(total);
+    var fraction = Math.max(0, Math.min(1, (total-MIN_TOTAL)/(MAX_TOTAL-MIN_TOTAL)));
+
+    var tonnes = total/1000;
+    var areaM2 = tonnes*3;
+    var volM3 = areaM2*1.5;
+    var massKg = volM3*900;
+    var iceCubes = massKg*1000/30;
+    var bathtubs = massKg/150;
+
+    $('tierTag').textContent = tier.tag;
+    $('tierTitle').textContent = "You're a " + tier.name;
+    $('resultArt').innerHTML = scene(fraction, {});
+
+    var headlineNum = $('headlineNum');
+    headlineNum.textContent = '0';
+    animateNumber(headlineNum, Math.round(total), '', 900);
+    animateNumber($('statCubes'), Math.round(iceCubes), '', 1100);
+    animateNumber($('statBathtubs'), Math.round(bathtubs), '', 1100);
+    animateNumber($('statArea'), Math.round(areaM2), '', 1100);
+
+    if (hasGsap && !reduceMotion){
+      gsap.fromTo('#resultArt', { opacity:0, scale:0.9 }, { opacity:1, scale:1, duration:0.6, ease:'power2.out' });
+      gsap.fromTo(['#tierTag','#tierTitle'], { opacity:0, y:-8 }, { opacity:1, y:0, duration:0.4, stagger:0.08, ease:'power2.out' });
+      gsap.fromTo('.compare-card', { opacity:0, y:16 }, { opacity:1, y:0, duration:0.45, stagger:0.1, delay:0.25, ease:'power2.out' });
+      gsap.fromTo('.method', { opacity:0 }, { opacity:1, duration:0.6, delay:0.5 });
+    }
+
+    try {
+      var prevRaw = localStorage.getItem('meltprint_last');
+      if (prevRaw){
+        var prev = JSON.parse(prevRaw);
+        if (typeof prev.total === 'number' && prev.total !== total){
+          var diff = total - prev.total;
+          var note = $('prevNote');
+          note.style.display = 'block';
+          note.textContent = diff < 0
+            ? 'That\'s ' + Math.round(Math.abs(diff)).toLocaleString() + ' kg less than last time you took this.'
+            : 'That\'s ' + Math.round(diff).toLocaleString() + ' kg more than last time you took this.';
+        }
+      }
+      localStorage.setItem('meltprint_last', JSON.stringify({total: total, when: Date.now()}));
+    } catch(e){ /* storage unavailable — skip the comparison */ }
+
+    gaugeWrap.style.visibility = 'hidden';
+    showScene('results');
+  }
+
+  $('restartBtn').addEventListener('click', function(){
+    answers = new Array(QUESTIONS.length).fill(null);
+    idx = 0;
+    $('prevNote').style.display = 'none';
+    showScene('hero');
+    topbar.classList.remove('show-border');
+  });
+
+  $('copyBtn').addEventListener('click', function(){
+    var txt = $('headlineNum').textContent + ' kg CO\u2082/yr — roughly ' + $('statArea').textContent + ' m\u00B2 of Arctic sea ice melted. (Meltprint)';
+    var btn = $('copyBtn');
+    var original = btn.textContent;
+    function done(ok){ btn.textContent = ok ? 'Copied' : 'Copy failed'; setTimeout(function(){btn.textContent=original;},1500); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(txt).then(function(){done(true);}).catch(function(){done(false);});
+      } else { done(false); }
+    } catch(e){ done(false); }
+  });
+
+})();
+</script>
+</body>
+</html>
