@@ -100,7 +100,9 @@
   /* ---- hero ---- */
   #hero .wrap { padding-top: 6vh; padding-bottom: 64px; text-align: center; }
   .hero-art { width: min(420px, 82vw); margin: 0 auto 8px; }
-  .hero-art .bob { transform-origin: center; }
+  .hero-art .bob { animation: bob 6s ease-in-out infinite; transform-origin: center; }
+  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+  @media (prefers-reduced-motion: reduce) { .hero-art .bob { animation: none; } }
   .eyebrow-line { color: var(--text-soft); font-size: 15px; margin: 18px 0 6px; }
   h1.title { font-size: clamp(30px, 5.4vw, 46px); line-height: 1.08; }
   .lede { color: var(--text-soft); font-size: 17px; line-height: 1.55; max-width: 480px; margin: 18px auto 0; }
@@ -180,6 +182,70 @@
     font-size: 13px; color: var(--text-soft); line-height: 1.6;
   }
   .method b { color: var(--text); }
+
+  /* ---- breakdown + collective impact ---- */
+  .breakdown-box {
+    margin-top: 28px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px 18px 14px;
+  }
+  .breakdown-label {
+    font-size: 12px; color: var(--text-soft); margin-bottom: 12px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .breakdown-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 14.5px; }
+  .breakdown-row:last-child { margin-bottom: 0; }
+  .breakdown-icon { width: 20px; height: 20px; flex: none; color: var(--glacier-500); }
+  .breakdown-name { flex: 1; }
+  .breakdown-kg { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-soft); font-size: 13.5px; }
+
+  .collective-box {
+    margin-top: 14px; text-align: center; padding: 26px 20px 22px;
+    background: linear-gradient(160deg, var(--warn-600), var(--warn-400));
+    border-radius: 14px; color: #fff;
+    transform-origin: center;
+  }
+  .collective-eyebrow {
+    font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+    opacity: .85; margin-bottom: 6px;
+  }
+  .collective-ring-wrap { position: relative; width: 148px; height: 148px; margin: 6px auto 4px; }
+  .collective-ring { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring-track { fill: none; stroke: rgba(255,255,255,.28); stroke-width: 9; }
+  .ring-fill {
+    fill: none; stroke: #fff; stroke-width: 9; stroke-linecap: round;
+    stroke-dasharray: 326.7; stroke-dashoffset: 326.7;
+    filter: drop-shadow(0 0 6px rgba(255,255,255,.65));
+  }
+  .collective-num {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: clamp(26px, 5.4vw, 34px); font-weight: 700; font-family: "Space Grotesk", sans-serif;
+  }
+  .shockwave {
+    position: absolute; inset: 0; margin: auto; width: 148px; height: 148px;
+    border-radius: 50%; border: 2px solid rgba(255,255,255,.85); opacity: 0; pointer-events: none;
+  }
+  .collective-label {
+    font-size: 13.5px; margin-top: 4px; opacity: .95; line-height: 1.5;
+    max-width: 400px; margin-left: auto; margin-right: auto;
+  }
+
+  .sources {
+    margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border);
+    font-size: 12px; color: var(--text-soft); line-height: 1.7;
+  }
+  .sources-label { font-weight: 600; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; font-size: 11px; }
+  .source-link { display: block; color: var(--glacier-500); text-decoration: none; }
+  .source-link:hover { text-decoration: underline; }
+
+  .shard-layer {
+    position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 50;
+  }
+  .ice-shard {
+    position: absolute; top: -40px;
+    background: linear-gradient(160deg, #eaf6fb, #9cc4d8);
+    border-radius: 2px; opacity: .9;
+    box-shadow: 0 0 6px rgba(111,195,228,.55);
+  }
 </style>
 </head>
 <body>
@@ -252,6 +318,25 @@
       </div>
     </div>
 
+    <div class="breakdown-box" id="breakdownBox">
+      <div class="breakdown-label">What's driving your number</div>
+      <div class="breakdown-rows" id="breakdownRows"></div>
+    </div>
+
+    <div class="collective-box" id="collectiveBox">
+      <div class="collective-eyebrow">If everyone lived like you</div>
+      <div class="collective-ring-wrap">
+        <div class="shockwave" id="shockwave1"></div>
+        <div class="shockwave" id="shockwave2"></div>
+        <svg class="collective-ring" viewBox="0 0 120 120">
+          <circle class="ring-track" cx="60" cy="60" r="52"/>
+          <circle class="ring-fill" id="ringFill" cx="60" cy="60" r="52"/>
+        </svg>
+        <div class="collective-num" id="collectiveNum">0%</div>
+      </div>
+      <div class="collective-label">of what's left of summer Arctic sea ice — gone, every single year — if all ~8.2 billion of us matched your footprint</div>
+    </div>
+
     <p class="prev-note" id="prevNote" style="display:none"></p>
 
     <div class="action-row">
@@ -260,10 +345,19 @@
     </div>
 
     <div class="method">
-      <b>How this works.</b> Each answer maps to a rough annual CO₂ figure drawn from typical published estimates for transport, diet, home energy and consumption. We convert your total into ice using the estimate from Notz &amp; Stroeve's 2016 study in <i>Science</i>: roughly 3 m² of September Arctic sea ice is lost per tonne of CO₂ emitted. Volume and mass assume an average sea-ice thickness of 1.5 m and a density of 900 kg/m³. Treat the final numbers as an illustration of scale, not a precise personal footprint.
+      <b>How this works.</b> Each answer maps to a rough annual CO₂ figure drawn from typical published estimates for transport, diet, home energy and consumption. We convert your total into ice using the estimate from Notz &amp; Stroeve's 2016 study in <i>Science</i>: roughly 3 m² of September Arctic sea ice is lost per tonne of CO₂ emitted. Volume and mass assume an average sea-ice thickness of 1.5 m and a density of 900 kg/m³. The "if everyone lived like you" figure scales your area up to a world population of roughly 8.2 billion and compares it with the Arctic's actual 2025 September minimum extent. Treat every number here as an illustration of scale, not a precise personal footprint.
+    </div>
+
+    <div class="sources">
+      <div class="sources-label">Sources</div>
+      <a class="source-link" href="https://doi.org/10.1126/science.aag2345" target="_blank" rel="noopener">Notz &amp; Stroeve, "Observed Arctic sea-ice loss directly follows anthropogenic CO₂ emission," Science, 2016 — the 3 ± 0.3 m² per tonne figure</a>
+      <a class="source-link" href="https://nsidc.org/sea-ice-today" target="_blank" rel="noopener">NSIDC — 2025 Arctic sea ice minimum extent, 4.60 million km² (Sept 10, 2025)</a>
+      <a class="source-link" href="https://www.worldometers.info/world-population/" target="_blank" rel="noopener">Worldometer — current world population estimate</a>
     </div>
   </div>
 </section>
+
+<div class="shard-layer" id="shardLayer" aria-hidden="true"></div>
 
 <script>
 (function(){
@@ -333,6 +427,14 @@
     { max:15000, name:'Heatwave Habit',  tag:'High melt' },
     { max:Infinity, name:'Glacier Buster', tag:'Very high melt' }
   ];
+
+  var CATEGORY_NAMES = {
+    transport:'Getting around', flights:'Flights', diet:'Diet', energy:'Home electricity',
+    home:'Home size & heating', shopping:'Shopping', waste:'Food waste', habits:'Power habits'
+  };
+
+  var WORLD_POPULATION = 8.2e9; // Worldometer, 2026 estimate
+  var ARCTIC_MIN_EXTENT_KM2 = 4600000; // NSIDC observed September 2025 minimum extent
 
   // ---------------- icons ----------------
   function icon(name){
@@ -492,6 +594,7 @@
       if (answers[idx] === opt.kg) b.classList.add('chosen');
       b.innerHTML = '<span class="opt-icon">'+icon(opt.icon)+'</span><span>'+opt.label+'</span>';
       b.addEventListener('click', function(){
+        answers.forEach(function(){});
         answers[idx] = opt.kg;
         buttons.forEach(function(bt){ bt.classList.remove('chosen'); });
         b.classList.add('chosen');
@@ -532,16 +635,8 @@
   }
 
   function animateNumber(el, to, suffix, duration){
-    suffix = suffix || '';
-    if (hasGsap){
-      var counter = { v: 0 };
-      gsap.to(counter, {
-        v: to, duration: (duration||900)/1000, ease: 'power3.out',
-        onUpdate: function(){ el.textContent = Math.round(counter.v).toLocaleString() + suffix; }
-      });
-      return;
-    }
     var start = performance.now();
+    suffix = suffix || '';
     function frame(now){
       var p = Math.min(1, (now-start)/duration);
       var eased = 1 - Math.pow(1-p, 3);
@@ -549,6 +644,56 @@
       if (p<1) requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);
+  }
+
+  function animatePercent(el, to, duration){
+    var start = performance.now();
+    function frame(now){
+      var p = Math.min(1, (now-start)/duration);
+      var eased = 1 - Math.pow(1-p, 3);
+      var val = to*eased;
+      el.textContent = (val < 10 ? val.toFixed(1) : Math.round(val).toLocaleString()) + '%';
+      if (p<1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function triggerShockwave(){
+    if (!hasGsap) return;
+    ['shockwave1','shockwave2'].forEach(function(id, i){
+      var el = $(id);
+      gsap.fromTo(el, { scale: 0.55, opacity: 0.9 }, { scale: 2.4, opacity: 0, duration: 1.15, delay: i*0.16, ease: 'power2.out' });
+    });
+  }
+
+  function spawnIceShards(count){
+    var layer = $('shardLayer');
+    if (!layer) return;
+    layer.innerHTML = '';
+    var w = window.innerWidth;
+    for (var i=0; i<count; i++){
+      var el = document.createElement('div');
+      el.className = 'ice-shard';
+      var size = 7 + Math.random()*13;
+      el.style.width = size + 'px';
+      el.style.height = (size*1.6) + 'px';
+      el.style.left = (Math.random()*w) + 'px';
+      layer.appendChild(el);
+      if (hasGsap){
+        gsap.to(el, {
+          y: window.innerHeight + 100,
+          x: '+=' + (Math.random()*140 - 70),
+          rotation: (Math.random()*360) * (Math.random()<0.5?-1:1),
+          opacity: 0,
+          duration: 2.1 + Math.random()*1.3,
+          ease: 'power1.in',
+          delay: Math.random()*0.35,
+          onComplete: (function(node){ return function(){ if (node.parentNode) node.parentNode.removeChild(node); }; })(el)
+        });
+      } else {
+        el.remove();
+      }
+    }
   }
 
   function finish(){
@@ -574,11 +719,54 @@
     animateNumber($('statBathtubs'), Math.round(bathtubs), '', 1100);
     animateNumber($('statArea'), Math.round(areaM2), '', 1100);
 
+    // biggest contributors — personalize and make it actionable
+    var byCategory = QUESTIONS.map(function(q, i){
+      return { name: CATEGORY_NAMES[q.id] || q.id, icon: q.icon, kg: answers[i] || 0 };
+    }).sort(function(a,b){ return b.kg - a.kg; });
+    var topContributors = byCategory.slice(0,3).filter(function(c){ return c.kg > 0; });
+    $('breakdownRows').innerHTML = topContributors.map(function(c){
+      return '<div class="breakdown-row"><span class="breakdown-icon">'+icon(c.icon)+'</span>'+
+        '<span class="breakdown-name">'+c.name+'</span>'+
+        '<span class="breakdown-kg">'+Math.round(c.kg).toLocaleString()+' kg</span></div>';
+    }).join('');
+
+    // collective impact — the same per-tonne conversion, scaled to world population
+    var globalAreaKm2 = (areaM2 * WORLD_POPULATION) / 1e6;
+    var collectivePct = (globalAreaKm2 / ARCTIC_MIN_EXTENT_KM2) * 100;
+    var displayPct = Math.min(collectivePct, 100);
+
+    var RING_CIRCUMFERENCE = 2 * Math.PI * 52;
+    var ringFill = $('ringFill');
+    ringFill.style.strokeDasharray = RING_CIRCUMFERENCE;
+    ringFill.style.strokeDashoffset = RING_CIRCUMFERENCE;
+    $('collectiveNum').textContent = '0%';
+
     if (hasGsap && !reduceMotion){
-      gsap.fromTo('#resultArt', { opacity:0, scale:0.9 }, { opacity:1, scale:1, duration:0.6, ease:'power2.out' });
-      gsap.fromTo(['#tierTag','#tierTitle'], { opacity:0, y:-8 }, { opacity:1, y:0, duration:0.4, stagger:0.08, ease:'power2.out' });
-      gsap.fromTo('.compare-card', { opacity:0, y:16 }, { opacity:1, y:0, duration:0.45, stagger:0.1, delay:0.25, ease:'power2.out' });
-      gsap.fromTo('.method', { opacity:0 }, { opacity:1, duration:0.6, delay:0.5 });
+      var finaleTl = gsap.timeline({ delay: 1.0 });
+      finaleTl
+        .to('#collectiveBox', { scale: 1.05, duration: 0.3, ease: 'power2.out' })
+        .to('#collectiveBox', { scale: 1, duration: 0.6, ease: 'elastic.out(1,0.45)' }, '<0.05')
+        .to(ringFill, {
+          strokeDashoffset: RING_CIRCUMFERENCE - (RING_CIRCUMFERENCE * displayPct / 100),
+          duration: 1.5, ease: 'power2.out',
+          onUpdate: function(){
+            var off = parseFloat(ringFill.style.strokeDashoffset);
+            var pct = ((RING_CIRCUMFERENCE - off) / RING_CIRCUMFERENCE) * 100;
+            $('collectiveNum').textContent = (pct < 10 ? pct.toFixed(1) : Math.round(pct)) + '%';
+          },
+          onComplete: function(){
+            $('collectiveNum').textContent = (collectivePct < 10 ? collectivePct.toFixed(1) : Math.round(collectivePct).toLocaleString()) + '%';
+          }
+        }, '-=0.25')
+        .call(function(){
+          triggerShockwave();
+          spawnIceShards(24);
+          gsap.fromTo('#collectiveBox', { boxShadow: '0 0 0 rgba(255,255,255,0)' }, { boxShadow: '0 0 40px rgba(255,138,92,.55)', duration: 0.3, yoyo: true, repeat: 1 });
+          gsap.to(document.body, { x: -3, duration: 0.045, yoyo: true, repeat: 7, ease: 'power1.inOut', onComplete: function(){ gsap.set(document.body, { x: 0 }); } });
+        });
+    } else {
+      ringFill.style.strokeDashoffset = RING_CIRCUMFERENCE - (RING_CIRCUMFERENCE * displayPct / 100);
+      $('collectiveNum').textContent = (collectivePct < 10 ? collectivePct.toFixed(1) : Math.round(collectivePct).toLocaleString()) + '%';
     }
 
     try {
